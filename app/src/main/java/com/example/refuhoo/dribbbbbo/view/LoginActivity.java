@@ -36,7 +36,7 @@ public class LoginActivity extends AppCompatActivity {
         ButterKnife.bind(this);
 
         Dribbble.logout(LoginActivity.this);
-        //Dribbble.init(LoginActivity.this);
+        Dribbble.init(LoginActivity.this);
         Log.d("mengjie","LoginActivity-oncreate");
         if(!Dribbble.isLoggedIn()) {
             Log.d("mengjie","Dribbble.isLoggedIn() is false");

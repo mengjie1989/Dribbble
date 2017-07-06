@@ -1,10 +1,14 @@
 package com.example.refuhoo.dribbbbbo.view.shot_list;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.Nullable;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
+import android.support.v4.os.AsyncTaskCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
@@ -16,7 +20,10 @@ import com.example.refuhoo.dribbbbbo.R;
 import com.example.refuhoo.dribbbbbo.dribbble.Dribbble;
 import com.example.refuhoo.dribbbbbo.model.Shot;
 import com.example.refuhoo.dribbbbbo.model.User;
+import com.example.refuhoo.dribbbbbo.utils.ModelUtils;
 import com.example.refuhoo.dribbbbbo.view.base.SpaceItemDecoration;
+import com.example.refuhoo.dribbbbbo.view.shot_detail.ShotFragment;
+import com.google.gson.reflect.TypeToken;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,15 +36,42 @@ import java.util.Random;
 
 public class ShotListFragment extends Fragment {
 
+    public static final int REQ_CODE_SHOT = 100;
     private RecyclerView recyclerView;
     private ShotListAdapter adapter;
 
-    public static final int COUNT_PER_PAGE = 30;
-    public static final int COUNT_TOTAL = 50;
+    private int listType;
 
-    public static ShotListFragment newInstance() {
+    public static final int COUNT_TOTAL = 50;
+    public static final String KEY_LIST_TYPE = "listType";
+    public static final int LIST_TYPE_POPULAR = 1;
+    public static final int LIST_TYPE_LIKED = 2;
+    public static final int LIST_TYPE_BUCKET = 3;
+
+    public static ShotListFragment newInstance(int type) {
         ShotListFragment fragment = new ShotListFragment();
+
+        Bundle args = new Bundle();
+        args.putInt(KEY_LIST_TYPE, type);
+        fragment.setArguments(args);
+
         return fragment;
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if(requestCode == REQ_CODE_SHOT && resultCode == Activity.RESULT_OK) {
+            Shot updatedShot = ModelUtils.toObject(data.getStringExtra(ShotFragment.KEY_SHOT),
+                                                    new TypeToken<Shot>(){});
+            for (Shot shot : adapter.getData()) {
+                if (TextUtils.equals(shot.id, updatedShot.id)) {
+                    shot.likes_count = updatedShot.likes_count;
+                    shot.buckets_count = updatedShot.buckets_count;
+                    adapter.notifyDataSetChanged();
+                    return;
+                }
+            }
+        }
     }
 
     @Nullable
@@ -53,7 +87,8 @@ public class ShotListFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        adapter = new ShotListAdapter(new ArrayList<Shot>(), getContext(),
+        listType = getArguments().getInt(KEY_LIST_TYPE);
+        adapter = new ShotListAdapter(new ArrayList<Shot>(), this,
             new ShotListAdapter.LoadMoreListener() {
 
                 @Override
@@ -82,25 +117,25 @@ public class ShotListFragment extends Fragment {
 //                        }
 //                    }).start();
 
-                    int page = adapter.shotSize() / COUNT_PER_PAGE + 1;
-                    new LoadShotTask(page).execute();
-
+                    int page = adapter.shotSize() / Dribbble.COUNT_PER_PAGE + 1;
+                    //new LoadShotTask(page).execute();
+                    AsyncTaskCompat.executeParallel(new LoadShotTask(page));
                 }
         });
 
         recyclerView.setAdapter(adapter);
         recyclerView.addItemDecoration(new SpaceItemDecoration(getResources().getDimensionPixelSize(R.dimen.spacing_medium)));
     }
-
-    private int getCount() {
-        int count = COUNT_TOTAL - adapter.shotSize();
-        if(count < 0){
-            count = 0;
-        } else if(count > COUNT_PER_PAGE){
-            count = COUNT_PER_PAGE;
-        }
-        return count;
-    }
+//
+//    private int getCount() {
+//        int count = COUNT_TOTAL - adapter.shotSize();
+//        if(count < 0){
+//            count = 0;
+//        } else if(count > COUNT_PER_PAGE){
+//            count = COUNT_PER_PAGE;
+//        }
+//        return count;
+//    }
 
 //    private List<Shot> fakeData(int count) {
 //        List<Shot> shotLists = new ArrayList<>();
@@ -147,7 +182,14 @@ public class ShotListFragment extends Fragment {
         @Override
         protected List<Shot> doInBackground(Void... params) {
             try {
-                return Dribbble.getShots(page);
+                switch(listType) {
+                    case LIST_TYPE_POPULAR:
+                        return Dribbble.getShots(page);
+                    case LIST_TYPE_LIKED:
+                        return Dribbble.getLikedShots(page);
+                    default:
+                        return Dribbble.getShots(page);
+                }
             } catch (IOException e) {
                 e.printStackTrace();
                 return null;
@@ -158,6 +200,10 @@ public class ShotListFragment extends Fragment {
         protected void onPostExecute(List<Shot> shots) {
             if(shots != null){
                 adapter.appendData(shots);
+                adapter.setShowLoading(shots.size() == Dribbble.COUNT_PER_PAGE);
+                Snackbar.make(getView(), shots.get(0).title, Snackbar.LENGTH_LONG).show();
+            } else {
+                Snackbar.make(getView(), "Error!", Snackbar.LENGTH_LONG).show();
             }
         }
 

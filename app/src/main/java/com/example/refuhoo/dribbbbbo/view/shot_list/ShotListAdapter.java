@@ -7,6 +7,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.example.refuhoo.dribbbbbo.R;
 import com.example.refuhoo.dribbbbbo.model.Shot;
 import com.example.refuhoo.dribbbbbo.utils.ModelUtils;
@@ -27,13 +29,13 @@ public class ShotListAdapter extends RecyclerView.Adapter{
     //private final int TOTAL_SHOTS = 50;
 
     private List<Shot> shotList;
-    private Context context;
+    private final ShotListFragment shotListFragment;
     private LoadMoreListener listener;
     private boolean showLoading;
 
-    public ShotListAdapter(List<Shot> shots, Context c, LoadMoreListener l){
+    public ShotListAdapter(List<Shot> shots, ShotListFragment fragment, LoadMoreListener l){
         shotList = shots;
-        context = c;
+        shotListFragment = fragment;
         listener = l;
         showLoading = true;
     }
@@ -65,16 +67,23 @@ public class ShotListAdapter extends RecyclerView.Adapter{
             shotViewHolder.bucket_count.setText(String.valueOf(shot.buckets_count));
             shotViewHolder.like_count.setText(String.valueOf(shot.likes_count));
             shotViewHolder.view_count.setText(String.valueOf(shot.views_count));
-            shotViewHolder.shot_image.setImageResource(R.drawable.shot_placeholder);
 
             shotViewHolder.cover.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    Intent intent = new Intent(context, ShotActivity.class);
+                    Intent intent = new Intent(shotListFragment.getContext(), ShotActivity.class);
                     intent.putExtra(ShotFragment.KEY_SHOT, ModelUtils.toString(shot,new TypeToken<Shot>(){}));
-                    context.startActivity(intent);
+                    shotListFragment.startActivityForResult(intent, ShotListFragment.REQ_CODE_SHOT);
                 }
             });
+
+            Glide
+                .with(holder.itemView.getContext())
+                .load(shotList.get(position).getImageURL())
+                .centerCrop()
+                .placeholder(R.drawable.shot_placeholder)
+                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                .into(shotViewHolder.shot_image);
         }
     }
 
@@ -97,12 +106,8 @@ public class ShotListAdapter extends RecyclerView.Adapter{
         }
     }
 
-    public void setShowLoading(int count) {
-        if(count < ShotListFragment.COUNT_PER_PAGE) {
-            showLoading = false;
-        } else {
-            showLoading = true;
-        }
+    public void setShowLoading(boolean showLoading) {
+        this.showLoading = showLoading;
         notifyDataSetChanged();
     }
 
@@ -117,5 +122,9 @@ public class ShotListAdapter extends RecyclerView.Adapter{
 
     public int shotSize(){
         return shotList.size();
+    }
+
+    public List<Shot> getData(){
+        return shotList;
     }
 }

@@ -13,8 +13,11 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.example.refuhoo.dribbbbbo.R;
 import com.example.refuhoo.dribbbbbo.dribbble.Dribbble;
 import com.example.refuhoo.dribbbbbo.view.bucket_list.BucketListFragment;
@@ -22,6 +25,9 @@ import com.example.refuhoo.dribbbbbo.view.shot_list.ShotListFragment;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+
+import static com.example.refuhoo.dribbbbbo.view.shot_list.ShotListFragment.LIST_TYPE_LIKED;
+import static com.example.refuhoo.dribbbbbo.view.shot_list.ShotListFragment.LIST_TYPE_POPULAR;
 
 /**
  * Created by refuhoo on 2016/12/23.
@@ -52,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
         if(savedInstanceState == null){
             getSupportFragmentManager()
                     .beginTransaction()
-                    .replace(R.id.content_frame,ShotListFragment.newInstance())
+                    .replace(R.id.content_frame,ShotListFragment.newInstance(LIST_TYPE_POPULAR))
                     .commit();
         }
     }
@@ -83,11 +89,15 @@ public class MainActivity extends AppCompatActivity {
         drawerLayout.addDrawerListener(drawerToggle);
 
         View headerView = navigationView.getHeaderView(0);
-        Log.d("mengjie", "MainActivity, User Name" + Dribbble.getCurrentUser().name);
+        ImageView userImageView = (ImageView) headerView.findViewById(R.id.nav_header_user_picture);
+        Glide.with(this).load(Dribbble.getCurrentUser().avatar_url)
+                .centerCrop().placeholder(R.drawable.user_picture_placeholder)
+                .into(userImageView);
+
         ((TextView)headerView.findViewById(R.id.nav_header_user_name))
                 .setText(Dribbble.getCurrentUser().name);
 
-        ((TextView)headerView.findViewById(R.id.nav_header_logout)).setOnClickListener(new View.OnClickListener() {
+        (headerView.findViewById(R.id.nav_header_logout)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Dribbble.logout(MainActivity.this);
@@ -96,6 +106,8 @@ public class MainActivity extends AppCompatActivity {
                 finish();
             }
         });
+        Log.d("mengjie", "MainActivity, User Name" + Dribbble.getCurrentUser().name);
+
 
         navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener(){
 
@@ -109,15 +121,15 @@ public class MainActivity extends AppCompatActivity {
                 Fragment fragment = null;
                 switch (item.getItemId()){
                     case R.id.drawer_item_home:
-                        fragment = ShotListFragment.newInstance();
+                        fragment = ShotListFragment.newInstance(LIST_TYPE_POPULAR);
                         setTitle(R.string.title_home);
                         break;
                     case R.id.drawer_item_likes:
-                        fragment = ShotListFragment.newInstance();
+                        fragment = ShotListFragment.newInstance(LIST_TYPE_LIKED);
                         setTitle(R.string.title_likes);
                         break;
                     case R.id.drawer_item_buckets:
-                        fragment = BucketListFragment.newInstance();
+                        fragment = BucketListFragment.newInstance(null, false, null);
                         setTitle(R.string.title_buckets);
                 }
 
